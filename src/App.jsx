@@ -7,9 +7,9 @@ const STORAGE_KEY = "food-manager-items";
 function loadItems() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) return JSON.parse(raw); // 空配列[]もそのまま返す
   } catch {}
-  return null;
+  return null; // キー自体が存在しない場合のみnull
 }
 
 function saveItems(items) {
@@ -429,8 +429,8 @@ function CalendarView({ items }) {
 export default function App() {
   const [items, setItems] = useState(() => {
     const saved = loadItems();
-    if (saved && saved.length > 0) return saved;
-    // 初回のみサンプルデータ
+    if (saved !== null) return saved; // 空配列も含めて保存済みデータを優先
+    // localStorageに何もない初回のみサンプルデータ
     return [
       { id:1, name:"うどん",     date:offsetDate(30),  genre:"noodle",     memo:"", image:null },
       { id:2, name:"カレーの素", date:offsetDate(120), genre:"kit",        memo:"・じゃがいも\n・にんじん\n・玉ねぎ", image:null },
