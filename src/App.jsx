@@ -443,6 +443,7 @@ export default function App(){
   const [expanded,setExpanded]=useState({});
   const [mainTab,setMainTab]=useState("list");
   const [listTab,setListTab]=useState("all");
+  const [searchQuery,setSearchQuery]=useState("");
   const addImgRef=useRef();
 
   const todayStr=new Date().toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric"});
@@ -483,7 +484,20 @@ export default function App(){
   }
   function deleteHistory(id,eatenAt){ setHistory(prev=>prev.filter(i=>!(i.id===id&&i.eatenAt===eatenAt))); }
 
-  const displayItems=listTab==="all"?allSorted:(byGenre[listTab]||[]);
+  const baseItems=listTab==="all"?allSorted:(byGenre[listTab]||[]);
+  const displayItems=useMemo(()=>{
+    const q=searchQuery.trim().toLowerCase();
+    if(!q)return baseItems;
+    return baseItems.filter(i=>{
+      const gs=Array.isArray(i.genres)?i.genres:(i.genre?[i.genre]:[]);
+      const genreLabels=gs.map(gid=>GENRE_MAP[gid]?.label||"").join(" ");
+      return(
+        i.name.toLowerCase().includes(q)||
+        (i.memo||"").toLowerCase().includes(q)||
+        genreLabels.includes(q)
+      );
+    });
+  },[baseItems,searchQuery]);
   const expiredCount=items.filter(i=>getStatus(i.date).diff<0).length;
   const soonCount=items.filter(i=>{ const d=getStatus(i.date).diff; return d>=0&&d<=21; }).length;
 
@@ -578,10 +592,33 @@ export default function App(){
             </div>
           </div>
 
+          {/* Search Bar */}
+          <div style={{ padding:"10px 14px 0" }}>
+            <div style={{ position:"relative" }}>
+              <span style={{ position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,color:"#bbb",pointerEvents:"none" }}>🔍</span>
+              <input
+                value={searchQuery}
+                onChange={e=>setSearchQuery(e.target.value)}
+                placeholder="食材名・メモ・ジャンルで検索"
+                style={{ width:"100%",boxSizing:"border-box",border:"1.5px solid #e0dbd0",borderRadius:12,padding:"10px 36px 10px 36px",fontSize:14,outline:"none",background:"#fff",color:"#2d4a3e" }}
+              />
+              {searchQuery&&(
+                <button onClick={()=>setSearchQuery("")} style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#bbb",fontSize:18,cursor:"pointer",lineHeight:1,padding:0 }}>×</button>
+              )}
+            </div>
+            {searchQuery&&(
+              <div style={{ fontSize:11,color:"#aaa",marginTop:5,paddingLeft:2 }}>
+                「{searchQuery}」の検索結果：{displayItems.length}件
+              </div>
+            )}
+          </div>
+
           {/* List */}
           <div style={{ padding:"12px 14px 0" }}>
             {displayItems.length===0?(
-              <div style={{ textAlign:"center",padding:"48px 0",color:"#bbb",fontSize:14 }}>このジャンルの食材はありません 🌿</div>
+              <div style={{ textAlign:"center",padding:"48px 0",color:"#bbb",fontSize:14 }}>
+                {searchQuery?`「${searchQuery}」に一致する食材はありません 🔍`:"このジャンルの食材はありません 🌿"}
+              </div>
             ):(
               <div style={{ display:"flex",flexDirection:"column",gap:9 }}>
                 {listTab!=="all"&&GENRE_MAP[listTab]&&(
