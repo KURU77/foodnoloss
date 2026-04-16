@@ -3,7 +3,37 @@ import { useState, useMemo, useRef, useEffect } from "react";
 // ── localStorage ──────────────────────────────────────────────────────────────
 const STORAGE_KEY         = "food-manager-items";
 const STORAGE_KEY_HISTORY = "food-manager-history";
+const STORAGE_KEY_IMAGES  = "food-manager-images";
+
 function load(key) { try { const r=localStorage.getItem(key); if(r!==null)return JSON.parse(r); } catch{} return null; }
+
+// 画像は別キーに分けて保存・読み込み
+function saveItems(items) {
+  try {
+    // 画像だけ別に保存
+    const images = {};
+    items.forEach(i=>{ if(i.image) images[i.id]=i.image; });
+    localStorage.setItem(STORAGE_KEY_IMAGES, JSON.stringify(images));
+  } catch(e) {
+    // 画像保存失敗は無視（容量超過時）
+  }
+  try {
+    // アイテム本体は画像なしで保存
+    const slim = items.map(({image,...rest})=>rest);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+  } catch(e) {
+    console.error("保存失敗:", e);
+  }
+}
+
+function loadItems() {
+  const items = load(STORAGE_KEY);
+  if(items === null) return null;
+  // 画像を別ストレージから復元
+  const images = load(STORAGE_KEY_IMAGES) || {};
+  return items.map(i=>({ ...i, image: images[i.id] ?? null }));
+}
+
 function save(key,data) { try { localStorage.setItem(key,JSON.stringify(data)); } catch{} }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -417,7 +447,7 @@ function CalendarView({ items }){
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App(){
   const [items,setItems]=useState(()=>{
-    const s=load(STORAGE_KEY); if(s!==null)return s;
+    const s=loadItems(); if(s!==null)return s;
     return[
       {id:1,name:"うどん",    date:offsetDate(30), genres:["noodle"],    memo:"",image:null,qty:1},
       {id:2,name:"カレーの素",date:offsetDate(120),genres:["kit"],       memo:"・じゃがいも\n・にんじん\n・玉ねぎ",image:null,qty:1},
@@ -430,7 +460,7 @@ export default function App(){
     ];
   });
   const [history,setHistory]=useState(()=>load(STORAGE_KEY_HISTORY)??[]);
-  useEffect(()=>{ save(STORAGE_KEY,items); },[items]);
+  useEffect(()=>{ saveItems(items); },[items]);
   useEffect(()=>{ save(STORAGE_KEY_HISTORY,history); },[history]);
 
   const [name,setName]=useState("");
